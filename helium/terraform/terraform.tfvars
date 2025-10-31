@@ -1,0 +1,5 @@
+aws_region          = "us-east-1"
+cluster_name        = "my-eks-cluster"
+aurora_cluster_name = "my-aurora-cluster"
+db_username         = "dbadmin"
+instance_type       = "t3.small"

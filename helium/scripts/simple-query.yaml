@@ -1,0 +1,31 @@
+apiVersion: v1
+kind: Pod
+metadata:
+  name: db-query
+  namespace: client-ns
+  annotations:
+    eks.amazonaws.com/role-arn: arn:aws:iam::0123456789:role/my-eks-cluster-rds-access
+spec:
+  serviceAccountName: python-client-sa
+  containers:
+  - name: aws-psql
+    image: public.ecr.aws/aws-cli/aws-cli:latest
+    command: ["sh", "-c"]
+    args:
+      - |
+        yum install -y postgresql15 > /dev/null &&
+        ENDPOINT=$(aws rds describe-db-clusters \
+          --db-cluster-identifier my-aurora-cluster \
+          --query 'DBClusters[0].Endpoint' --output text --region us-east-1) &&
+        TOKEN=$(aws rds generate-db-auth-token \
+          --hostname $ENDPOINT --port 5432 --region us-east-1 --username dbadmin) &&
+        PGPASSWORD=$TOKEN psql "host=$ENDPOINT port=5432 dbname=mydatabase user=dbadmin sslmode=require sslrootcert=/ca/rds-combined-ca-bundle.pem" \
+          -c "SELECT 1 AS proof;"
+    volumeMounts:
+    - name: ca
+      mountPath: /ca
+  volumes:
+  - name: ca
+    hostPath:
+      path: /tmp/rds-combined-ca-bundle.pem
+  restartPolicy: Never
